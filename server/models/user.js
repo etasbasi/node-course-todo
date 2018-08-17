@@ -46,16 +46,25 @@ UserSchema.methods.generateAuthToken = function () {
     var token = jwt.sign({_id: user._id.toHexString(), access}, 'abc123').toString();
 
     user.tokens.push({access, token});
-    user.tokens = user.tokens.concat([{access, token}]);
 
     return user.save().then(() => {
         return token;
     });
 };
 
+UserSchema.methods.removeToken = function (token) {
+    var user = this;
+
+    return user.update({
+        $pull: {
+            tokens: {token}
+        }
+    });
+};
+
 UserSchema.statics.findByToken = function (token) {
-    let User = this;
-    let decoded;
+    var User = this;
+    var decoded;
 
     try {
         decoded = jwt.verify(token, 'abc123');
@@ -71,7 +80,7 @@ UserSchema.statics.findByToken = function (token) {
 };
 
 UserSchema.statics.findByCredentials = function (email, password) {
-    let User = this;
+    var User = this;
 
     return User.findOne({email}).then((user) => {
         if (!user) {
@@ -79,6 +88,7 @@ UserSchema.statics.findByCredentials = function (email, password) {
         }
 
         return new Promise((resolve, reject) => {
+            // Use bcrypt.compare to compare password and user.password
             bcrypt.compare(password, user.password, (err, res) => {
                 if (res) {
                     resolve(user);
@@ -88,14 +98,13 @@ UserSchema.statics.findByCredentials = function (email, password) {
             });
         });
     });
-
 };
 
 UserSchema.pre('save', function (next) {
-    let user = this;
+    var user = this;
 
     if (user.isModified('password')) {
-        bcrypt.genSalt(10, function (err, salt) {
+        bcrypt.genSalt(10, (err, salt) => {
             bcrypt.hash(user.password, salt, (err, hash) => {
                 user.password = hash;
                 next();
@@ -104,9 +113,7 @@ UserSchema.pre('save', function (next) {
     } else {
         next();
     }
-
 });
-
 
 var User = mongoose.model('User', UserSchema);
 
